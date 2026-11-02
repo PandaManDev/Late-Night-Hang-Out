@@ -390,4 +390,4 @@ export async function handleCommand(interaction) {
   }
 }
 
-export { commands, sendLog, makeEmbed };
+export { sendLog, makeEmbed };
