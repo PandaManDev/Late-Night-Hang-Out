@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
-const commands = [
+export const commands = [
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Check whether the bot is online."),
@@ -64,8 +64,7 @@ const commands = [
     .setName("setlogchannel")
     .setDescription("Set the channel for moderation and server logs.")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addChannelOption(option => option.setName("channel").setDescription("Log channel").addChannelTypes(ChannelType.GuildText).setRequired(true))
-
+    .addChannelOption(option => option.setName("channel").setDescription("Log channel").addChannelTypes(ChannelType.GuildText).setRequired(true)),
   new SlashCommandBuilder()
     .setName("avatar")
     .setDescription("Show a member's avatar.")
