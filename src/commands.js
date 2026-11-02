@@ -136,8 +136,8 @@ function makeEmbed(title, description, color = 0x5865f2) {
 
 async function sendLog(guild, description) {
   const settings = getGuildSettings(guild.id);
-  if (!settings.logChannelId) return;
-  const channel = await guild.channels.fetch(settings.logChannelId).catch(() => null);
+  const logChannelId = settings.logChannelId || "1566892595546820709";
+  const channel = await guild.channels.fetch(logChannelId).catch(() => null);
   if (channel?.isTextBased()) {
     await channel.send({ embeds: [makeEmbed("Server Log", description, 0x747f8d)] }).catch(() => {});
   }
