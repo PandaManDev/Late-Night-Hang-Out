@@ -145,6 +145,28 @@ async function sendLog(guild, description) {
 
 export async function handleCommand(interaction) {
   const { commandName, guild, member } = interaction;
+
+  const adminRoleIds = new Set([
+    "1566890802943103107",
+    "1566891359908929637",
+    "1566891462984073276",
+    "1566891555300704256"
+  ]);
+  const adminOnlyCommands = new Set([
+    "clear", "kick", "ban", "timeout", "untimeout",
+    "announce", "setwelcome", "setlogchannel", "slowmode",
+    "lock", "unlock", "nickname", "role", "poll"
+  ]);
+
+  if (adminOnlyCommands.has(commandName)) {
+    const hasAdminRole = member.roles.cache.some(role => adminRoleIds.has(role.id));
+    if (!hasAdminRole) {
+      return interaction.reply({
+        content: "You need one of the approved admin roles to use this command.",
+        ephemeral: true
+      });
+    }
+  }
   if (!guild) {
     return interaction.reply({ content: "This command can only be used inside a server.", ephemeral: true });
   }
