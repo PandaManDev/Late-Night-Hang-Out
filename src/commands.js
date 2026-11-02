@@ -65,6 +65,66 @@ const commands = [
     .setDescription("Set the channel for moderation and server logs.")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addChannelOption(option => option.setName("channel").setDescription("Log channel").addChannelTypes(ChannelType.GuildText).setRequired(true))
+
+  new SlashCommandBuilder()
+    .setName("avatar")
+    .setDescription("Show a member's avatar.")
+    .addUserOption(option => option.setName("user").setDescription("Member whose avatar to show").setRequired(false)),
+  new SlashCommandBuilder()
+    .setName("membercount")
+    .setDescription("Show the server member count."),
+  new SlashCommandBuilder()
+    .setName("coinflip")
+    .setDescription("Flip a coin."),
+  new SlashCommandBuilder()
+    .setName("eightball")
+    .setDescription("Ask the magic 8-ball a question.")
+    .addStringOption(option => option.setName("question").setDescription("Your question").setMaxLength(300).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("roll")
+    .setDescription("Roll a dice.")
+    .addIntegerOption(option => option.setName("sides").setDescription("Number of sides (2-1000)").setMinValue(2).setMaxValue(1000).setRequired(false)),
+  new SlashCommandBuilder()
+    .setName("choose")
+    .setDescription("Let the bot choose between two options.")
+    .addStringOption(option => option.setName("option1").setDescription("First option").setMaxLength(100).setRequired(true))
+    .addStringOption(option => option.setName("option2").setDescription("Second option").setMaxLength(100).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("slowmode")
+    .setDescription("Set this channel's slowmode.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    .addIntegerOption(option => option.setName("seconds").setDescription("Slowmode seconds (0-21600)").setMinValue(0).setMaxValue(21600).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("lock")
+    .setDescription("Prevent @everyone from sending messages in this channel.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+  new SlashCommandBuilder()
+    .setName("unlock")
+    .setDescription("Allow @everyone to send messages in this channel.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+  new SlashCommandBuilder()
+    .setName("nickname")
+    .setDescription("Change a member's nickname.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageNicknames)
+    .addUserOption(option => option.setName("user").setDescription("Member to rename").setRequired(true))
+    .addStringOption(option => option.setName("name").setDescription("New nickname (leave blank to clear)").setMaxLength(32).setRequired(false)),
+  new SlashCommandBuilder()
+    .setName("role")
+    .setDescription("Add or remove a role from a member.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+    .addSubcommand(sub => sub.setName("add").setDescription("Give a role to a member.")
+      .addUserOption(option => option.setName("user").setDescription("Member").setRequired(true))
+      .addRoleOption(option => option.setName("role").setDescription("Role to give").setRequired(true)))
+    .addSubcommand(sub => sub.setName("remove").setDescription("Remove a role from a member.")
+      .addUserOption(option => option.setName("user").setDescription("Member").setRequired(true))
+      .addRoleOption(option => option.setName("role").setDescription("Role to remove").setRequired(true))),
+  new SlashCommandBuilder()
+    .setName("poll")
+    .setDescription("Create a two-option poll.")
+    .addStringOption(option => option.setName("question").setDescription("Poll question").setMaxLength(200).setRequired(true))
+    .addStringOption(option => option.setName("option1").setDescription("First option").setMaxLength(50).setRequired(true))
+    .addStringOption(option => option.setName("option2").setDescription("Second option").setMaxLength(50).setRequired(true))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
 ].map(command => command.toJSON());
 
 function makeEmbed(title, description, color = 0x5865f2) {
@@ -111,7 +171,22 @@ export async function handleCommand(interaction) {
       "",
       "**Configuration**",
       "`/setwelcome channel` — Set welcome/goodbye channel",
-      "`/setlogchannel channel` — Set server log channel"
+      "`/setlogchannel channel` — Set server log channel",
+      "",
+      "**Community & Fun**",
+      "`/avatar [user]` — Show an avatar",
+      "`/membercount` — Show member count",
+      "`/coinflip` — Flip a coin",
+      "`/eightball question` — Ask the 8-ball",
+      "`/roll [sides]` — Roll dice",
+      "`/choose option1 option2` — Pick an option",
+      "`/poll question option1 option2` — Create a poll",
+      "",
+      "**Channel & Role Tools**",
+      "`/slowmode seconds` — Set slowmode",
+      "`/lock` and `/unlock` — Lock or unlock channel",
+      "`/nickname user [name]` — Change nickname",
+      "`/role add|remove user role` — Manage member roles"
     ].join("\n");
     return interaction.reply({ embeds: [makeEmbed("Late Night Hang Out | Commands", description)], ephemeral: true });
   }
@@ -202,6 +277,105 @@ export async function handleCommand(interaction) {
     const message = interaction.options.getString("message", true);
     await channel.send({ content: message, allowedMentions: { parse: [] } });
     return interaction.reply({ content: `Announcement posted in <#${channel.id}>.`, ephemeral: true });
+  }
+
+  if (commandName === "avatar") {
+    const user = interaction.options.getUser("user") ?? interaction.user;
+    const url = user.displayAvatarURL({ size: 1024, extension: "png" });
+    const embed = makeEmbed(`${user.tag}'s Avatar`, `[Open full-size avatar](${url})`).setImage(url);
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  if (commandName === "membercount") {
+    return interaction.reply({ embeds: [makeEmbed("Server Members", `This server has **${guild.memberCount.toLocaleString()}** members.`)] });
+  }
+
+  if (commandName === "coinflip") {
+    const result = Math.random() < 0.5 ? "Heads" : "Tails";
+    return interaction.reply({ embeds: [makeEmbed("Coin Flip", `The coin landed on **${result}**.`)] });
+  }
+
+  if (commandName === "eightball") {
+    const answers = ["It is certain.", "Without a doubt.", "Yes — definitely.", "Most likely.", "Ask again later.", "Cannot predict that right now.", "Don't count on it.", "My sources say no.", "Very doubtful."];
+    const question = interaction.options.getString("question", true);
+    return interaction.reply({ embeds: [makeEmbed("Magic 8-Ball", `**Question:** ${question}\n\n**Answer:** ${answers[Math.floor(Math.random() * answers.length)]}`)] });
+  }
+
+  if (commandName === "roll") {
+    const sides = interaction.options.getInteger("sides") ?? 6;
+    const result = Math.floor(Math.random() * sides) + 1;
+    return interaction.reply({ embeds: [makeEmbed("Dice Roll", `You rolled **${result}** on a d${sides}.`)] });
+  }
+
+  if (commandName === "choose") {
+    const first = interaction.options.getString("option1", true);
+    const second = interaction.options.getString("option2", true);
+    const choice = Math.random() < 0.5 ? first : second;
+    return interaction.reply({ embeds: [makeEmbed("The Choice Is...", `I choose **${choice}**.`)] });
+  }
+
+  if (commandName === "slowmode") {
+    const seconds = interaction.options.getInteger("seconds", true);
+    if (!interaction.channel || !("setRateLimitPerUser" in interaction.channel)) {
+      return interaction.reply({ content: "Slowmode cannot be configured in this channel.", ephemeral: true });
+    }
+    await interaction.channel.setRateLimitPerUser(seconds, `Changed by ${interaction.user.tag}`);
+    return interaction.reply({ content: seconds === 0 ? "Slowmode disabled." : `Slowmode set to **${seconds} seconds**.` });
+  }
+
+  if (commandName === "lock" || commandName === "unlock") {
+    const everyone = guild.roles.everyone;
+    const locked = commandName === "lock";
+    await interaction.channel.permissionOverwrites.edit(everyone, {
+      SendMessages: locked ? false : null
+    }, { reason: `${locked ? "Channel locked" : "Channel unlocked"} by ${interaction.user.tag}` });
+    return interaction.reply({ content: locked ? "Channel locked for @everyone." : "Channel unlocked for @everyone." });
+  }
+
+  if (commandName === "nickname") {
+    const user = interaction.options.getUser("user", true);
+    const name = interaction.options.getString("name");
+    const target = await guild.members.fetch(user.id).catch(() => null);
+    if (!target) return interaction.reply({ content: "That member is not in this server.", ephemeral: true });
+    if (target.id === guild.ownerId || (!member.permissions.has(PermissionFlagsBits.Administrator) && member.roles.highest.comparePositionTo(target.roles.highest) <= 0)) {
+      return interaction.reply({ content: "You cannot change that member's nickname because of role hierarchy.", ephemeral: true });
+    }
+    if (!target.manageable) return interaction.reply({ content: "My role is not high enough to change that nickname.", ephemeral: true });
+    await target.setNickname(name || null, `Changed by ${interaction.user.tag}`);
+    return interaction.reply({ content: name ? `Changed **${user.tag}**'s nickname to **${name}**.` : `Cleared **${user.tag}**'s nickname.` });
+  }
+
+  if (commandName === "role") {
+    const subcommand = interaction.options.getSubcommand();
+    const user = interaction.options.getUser("user", true);
+    const role = interaction.options.getRole("role", true);
+    const target = await guild.members.fetch(user.id).catch(() => null);
+    if (!target) return interaction.reply({ content: "That member is not in this server.", ephemeral: true });
+    if (role.managed || role.id === guild.id || role.position >= guild.members.me.roles.highest.position) {
+      return interaction.reply({ content: "I cannot manage that role. Move my bot role above it and choose a non-managed role.", ephemeral: true });
+    }
+    if (!member.permissions.has(PermissionFlagsBits.Administrator) && (role.position >= member.roles.highest.position || target.roles.highest.position >= member.roles.highest.position)) {
+      return interaction.reply({ content: "Your highest role must be above both the target member and the role.", ephemeral: true });
+    }
+    if (!target.manageable) return interaction.reply({ content: "I cannot manage that member because of role hierarchy.", ephemeral: true });
+    if (subcommand === "add") {
+      await target.roles.add(role, `Added by ${interaction.user.tag}`);
+      return interaction.reply({ content: `Added ${role} to **${user.tag}**.` });
+    }
+    await target.roles.remove(role, `Removed by ${interaction.user.tag}`);
+    return interaction.reply({ content: `Removed ${role} from **${user.tag}**.` });
+  }
+
+  if (commandName === "poll") {
+    const question = interaction.options.getString("question", true);
+    const first = interaction.options.getString("option1", true);
+    const second = interaction.options.getString("option2", true);
+    const message = await interaction.channel.send({
+      embeds: [makeEmbed(`Poll: ${question}`, `🇦 **${first}**\n🇧 **${second}**\n\nReact below to vote!`)]
+    });
+    await message.react("🇦");
+    await message.react("🇧");
+    return interaction.reply({ content: `Poll created: ${message.url}`, ephemeral: true });
   }
 
   if (commandName === "setwelcome") {
