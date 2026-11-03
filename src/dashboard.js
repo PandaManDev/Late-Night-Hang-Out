@@ -60,7 +60,7 @@ export function startDashboard(client) {
     const params = new URLSearchParams({
       client_id: process.env.CLIENT_ID,
       response_type: "code",
-      redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `http://78.154.103.7:${PORT}/auth/callback`,
+      redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `https://latenightout.wispbyte.org:${PORT}/auth/callback`,
       scope: "identify",
       state
     });
@@ -78,7 +78,7 @@ export function startDashboard(client) {
         client_secret: process.env.DISCORD_CLIENT_SECRET,
         grant_type: "authorization_code",
         code: String(req.query.code),
-        redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `http://78.154.103.7:${PORT}/auth/callback`
+        redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `https://latenightout.wispbyte.org:${PORT}/auth/callback`
       });
       const tokenResponse = await fetch("https://discord.com/api/v10/oauth2/token", {
         method: "POST",
