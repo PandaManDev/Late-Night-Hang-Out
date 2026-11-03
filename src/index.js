@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { commands, handleCommand, sendLog, makeEmbed } from "./commands.js";
 import { getGuildSettings } from "./storage.js";
+import { startDashboard } from "./dashboard.js";
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
@@ -195,6 +196,8 @@ client.on("guildUpdate", (oldGuild, newGuild) => {
 
 client.on("error", error => console.error("Discord client error:", error));
 process.on("unhandledRejection", error => console.error("Unhandled promise rejection:", error));
+
+startDashboard(client);
 
 try {
   await registerCommands();
