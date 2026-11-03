@@ -118,6 +118,10 @@ export const commands = [
       .addUserOption(option => option.setName("user").setDescription("Member").setRequired(true))
       .addRoleOption(option => option.setName("role").setDescription("Role to remove").setRequired(true))),
   new SlashCommandBuilder()
+    .setName("postrules")
+    .setDescription("Post the Late Night Hang Out server rules." )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  new SlashCommandBuilder()
     .setName("poll")
     .setDescription("Create a two-option poll.")
     .addStringOption(option => option.setName("question").setDescription("Poll question").setMaxLength(200).setRequired(true))
@@ -155,7 +159,7 @@ export async function handleCommand(interaction) {
   const adminOnlyCommands = new Set([
     "clear", "kick", "ban", "timeout", "untimeout",
     "announce", "setwelcome", "setlogchannel", "slowmode",
-    "lock", "unlock", "nickname", "role", "poll"
+    "lock", "unlock", "nickname", "role", "poll", "postrules"
   ]);
 
   if (adminOnlyCommands.has(commandName)) {
@@ -193,6 +197,7 @@ export async function handleCommand(interaction) {
       "**Configuration**",
       "`/setwelcome channel` — Set welcome/goodbye channel",
       "`/setlogchannel channel` — Set server log channel",
+      "`/postrules` — Publish the server rules",
       "",
       "**Community & Fun**",
       "`/avatar [user]` — Show an avatar",
@@ -397,6 +402,51 @@ export async function handleCommand(interaction) {
     await message.react("🇦");
     await message.react("🇧");
     return interaction.reply({ content: `Poll created: ${message.url}`, ephemeral: true });
+  }
+
+  if (commandName === "postrules") {
+    const rulesChannelId = "1567012058673848437";
+    const rulesChannel = await guild.channels.fetch(rulesChannelId).catch(() => null);
+    if (!rulesChannel?.isTextBased() || !rulesChannel.permissionsFor(guild.members.me)?.has([
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.EmbedLinks
+    ])) {
+      return interaction.reply({
+        content: "I can't access the rules channel. Please check my View Channel, Send Messages, and Embed Links permissions.",
+        ephemeral: true
+      });
+    }
+
+    const rules = [
+      "Welcome to **Late Night Hang Out!** We're here to keep this community fun, friendly, and welcoming. By staying in the server, you agree to follow these rules.",
+      "",
+      "**1. Respect Everyone**\\nTreat all members with respect. No harassment, bullying, discrimination, threats, or personal attacks.",
+      "**2. No Spam**\\nDon't flood chats with repeated messages, excessive emojis, unwanted links, or mass mentions.",
+      "**3. Keep It Appropriate**\\nNo illegal content, extreme graphic material, or inappropriate content outside channels specifically designated for it.",
+      "**4. No Unwanted Advertising**\\nNo advertising, self-promotion, or server invites without staff approval.",
+      "**5. Respect Privacy**\\nNever share someone's private information, screenshots of private conversations, or personal details without permission.",
+      "**6. No Scamming or Malicious Links**\\nNo phishing, suspicious downloads, malware, impersonation, or attempts to steal accounts.",
+      "**7. Use the Correct Channels**\\nKeep conversations in their appropriate channels. Follow any channel-specific instructions.",
+      "**8. Voice Chat Etiquette**\\nNo screaming into microphones, soundboard abuse, harassment, or recording people without their consent.",
+      "**9. Listen to Staff**\\nFollow reasonable instructions from moderators and administrators. If you disagree with a decision, contact staff privately and respectfully.",
+      "**10. No Exploiting or Evading Punishments**\\nDon't exploit bots, loopholes, or server systems. Ban evasion and alternate accounts used to avoid moderation are not allowed.",
+      "**11. Keep Drama Under Control**\\nDon't start arguments, provoke members, or bring unnecessary personal conflicts into the community.",
+      "**12. Have Fun!**\\nMake friends, enjoy conversations, and help keep Late Night Hang Out a welcoming place.",
+      "",
+      "⚠️ **STAFF ENFORCEMENT**\\nBreaking the rules may result in a warning, message deletion, timeout, kick, or permanent ban depending on severity.",
+      "",
+      "🌙 **Thanks for being part of Late Night Hang Out!**"
+    ].join("\\n\\n");
+
+    await rulesChannel.send({
+      embeds: [makeEmbed("🌙 LATE NIGHT HANG OUT — SERVER RULES", rules, 0x5865f2)]
+    });
+    await sendLog(guild, `${interaction.user.tag} posted the server rules in <#${rulesChannelId}>.`);
+    return interaction.reply({
+      content: `The server rules have been posted in <#${rulesChannelId}>.`,
+      ephemeral: true
+    });
   }
 
   if (commandName === "setwelcome") {
