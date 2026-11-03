@@ -10,9 +10,10 @@ import { commands, handleCommand, sendLog, makeEmbed } from "./commands.js";
 import { getGuildSettings } from "./storage.js";
 import { startDashboard } from "./dashboard.js";
 
-const token = process.env.DISCORD_TOKEN;
-const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
+const cleanEnv = value => (value || "").trim().replace(/^["']|["']$/g, "");
+const token = cleanEnv(process.env.DISCORD_TOKEN);
+const clientId = cleanEnv(process.env.CLIENT_ID);
+const guildId = cleanEnv(process.env.GUILD_ID);
 
 if (!token || !clientId) {
   console.error("Missing DISCORD_TOKEN or CLIENT_ID. Copy .env.example to .env and fill them in.");
@@ -200,9 +201,13 @@ process.on("unhandledRejection", error => console.error("Unhandled promise rejec
 startDashboard(client);
 
 try {
-  await registerCommands();
+  // Authenticate the bot first so invalid tokens fail at login with a clear error.
   await client.login(token);
+  await registerCommands();
 } catch (error) {
   console.error("Bot startup failed:", error);
+  if (error?.status === 401 || error?.code === 0) {
+    console.error("Discord rejected the bot token. Check Wispbyte DISCORD_TOKEN: use the Bot Token from the same application as CLIENT_ID, with no 'Bot ' prefix or extra characters.");
+  }
   process.exit(1);
 }
