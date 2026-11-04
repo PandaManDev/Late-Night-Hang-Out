@@ -80,6 +80,48 @@ export function startDashboard(client) {
 
   app.get("/auth/login", (req, res) => res.redirect("/"));
 
+  // Public service status endpoint; intentionally does not require dashboard login.
+  app.get("/api/status", (req, res) => {
+    const online = client.isReady();
+    res.set("Cache-Control", "no-store");
+    res.json({
+      service: "Late Night Hang Out Discord Bot",
+      status: online ? "online" : "offline",
+      uptimeSeconds: online ? Math.floor(process.uptime()) : 0,
+      latencyMs: online && client.ws.ping >= 0 ? client.ws.ping : null,
+      checkedAt: new Date().toISOString()
+    });
+  });
+
+  app.get("/status", (req, res) => {
+    res.type("html").send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Late Night Hang Out | Status</title><link rel="icon" type="image/webp" href="/favicon.webp"><meta name="theme-color" content="#0b1020">
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--text:#f3f5ff;--accent:#9b8cff}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% 0,#29204d,var(--bg) 55%);color:var(--text);font:15px system-ui,sans-serif}
+header{padding:22px max(20px,calc((100% - 850px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+header a{color:#c9c2ff;text-decoration:none}main{max-width:850px;margin:54px auto;padding:0 20px}.eyebrow{color:#b6aaff;text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:700}
+h1{font-size:clamp(30px,6vw,44px);margin:8px 0}.muted{color:var(--muted)}.hero,.metric{background:rgba(21,29,50,.94);border:1px solid var(--line);border-radius:18px;padding:24px}
+.hero{margin:26px 0}.statusline{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:700}.dot{width:13px;height:13px;border-radius:50%;background:#f06b79;box-shadow:0 0 18px currentColor}.dot.online{background:#5de0a0;color:#5de0a0}.dot.offline{background:#f06b79;color:#f06b79}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.metric span{display:block;color:var(--muted);font-size:13px}.metric strong{display:block;font-size:25px;margin-top:8px;overflow-wrap:anywhere}
+footer{margin-top:28px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.refresh{border:1px solid var(--line);background:#302b58;color:white;border-radius:9px;padding:9px 13px;cursor:pointer}
+@media(max-width:560px){header{padding:16px;align-items:flex-start;flex-direction:column}main{margin:30px auto;padding:0 14px}.hero,.metric{padding:18px}.grid{gap:10px}.metric strong{font-size:21px}}
+</style></head><body>
+<header><b>🌙 Late Night Hang Out</b><a href="/">Admin dashboard →</a></header>
+<main><div class="eyebrow">Service status</div><h1>System status</h1><p class="muted">Live health information for the Late Night Hang Out Discord bot.</p>
+<section class="hero"><div class="statusline"><span id="dot" class="dot"></span><span id="status">Checking status…</span></div><p id="description" class="muted">Contacting the bot service.</p></section>
+<div class="grid"><section class="metric"><span>Current session uptime</span><strong id="uptime">—</strong></section><section class="metric"><span>Discord gateway latency</span><strong id="latency">—</strong></section></div>
+<footer><span id="checked">Waiting for first update</span><button class="refresh" id="refresh">Refresh status</button></footer>
+</main>
+<script>
+const el=id=>document.getElementById(id);
+function duration(total){if(!Number.isFinite(total)||total<0)return "—";const d=Math.floor(total/86400),h=Math.floor(total%86400/3600),m=Math.floor(total%3600/60),s=Math.floor(total%60);return (d?d+"d ":"")+(h+"h "+m+"m "+s+"s")}
+async function update(){try{const response=await fetch("/api/status",{cache:"no-store"});if(!response.ok)throw Error("HTTP "+response.status);const data=await response.json();const online=data.status==="online";el("dot").className="dot "+(online?"online":"offline");el("status").textContent=online?"All systems operational":"Bot is offline";el("description").textContent=online?"The Discord bot is connected and responding to status checks.":"The bot is not currently connected to Discord. The hosting process may be stopped or reconnecting.";el("uptime").textContent=online?duration(data.uptimeSeconds):"Offline";el("latency").textContent=data.latencyMs===null?"—":data.latencyMs+" ms";el("checked").textContent="Last checked: "+new Date(data.checkedAt).toLocaleTimeString();}catch(error){el("dot").className="dot offline";el("status").textContent="Status unavailable";el("description").textContent="Could not reach the status service. Please try again.";el("uptime").textContent="—";el("latency").textContent="—";el("checked").textContent="Update failed"}}
+el("refresh").addEventListener("click",update);update();setInterval(update,15000);
+</script></body></html>`);
+  });
+
   app.get("/api/me", requireAdmin, (req, res) => {
     res.json({ user: { tag: "Dashboard administrator" }, guild: req.guild.name });
   });
