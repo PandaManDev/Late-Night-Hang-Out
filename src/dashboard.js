@@ -1,6 +1,6 @@
 import express from "express";
 import session from "express-session";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
 const GUILD_ID = process.env.GUILD_ID || "1566861965584764990";
@@ -20,9 +20,8 @@ export function startDashboard(client) {
   const required = ["DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"];
   const missing = required.filter(key => !process.env[key]);
   if (missing.length) {
-    console.error("Dashboard disabled. Missing required Wispbyte environment variables:", missing.join(", "));
-    console.error("Add both DASHBOARD_PASSWORD and DASHBOARD_SESSION_SECRET in the server Environment/Variables settings, save, then restart.");
-    return;
+    console.error("Dashboard admin login is not fully configured. Missing:", missing.join(", "));
+    console.error("The public /status page will still be available. Add both variables to enable secure admin login.");
   }
 
   const app = express();
@@ -33,7 +32,7 @@ export function startDashboard(client) {
   app.use(express.json({ limit: "32kb" }));
   app.use(session({
     name: "lnho.admin",
-    secret: process.env.DASHBOARD_SESSION_SECRET,
+    secret: process.env.DASHBOARD_SESSION_SECRET || randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax", secure: "auto", maxAge: 8 * 60 * 60 * 1000 }
