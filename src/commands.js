@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
-export const commands = [
+const commands = [
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Check whether the bot is online."),
@@ -634,4 +634,4 @@ Breaking the rules may result in a warning, message deletion, timeout, kick, or 
   }
 }
 
-export { sendLog, makeEmbed };
+export { commands, sendLog, makeEmbed };
