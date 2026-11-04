@@ -49,6 +49,26 @@ client.once("ready", async readyClient => {
 });
 
 client.on("interactionCreate", async interaction => {
+  if (interaction.isButton() && interaction.customId === "lnho_verify_member") {
+    try {
+      if (!interaction.inGuild()) return interaction.reply({ content: "Verification is only available in the server.", ephemeral: true });
+      const role = await interaction.guild.roles.fetch("1566892030276411482").catch(() => null);
+      if (!role || role.managed || role.position >= interaction.guild.members.me.roles.highest.position) {
+        return interaction.reply({ content: "Verification is unavailable right now. Please contact a moderator.", ephemeral: true });
+      }
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      if (member.roles.cache.has(role.id)) return interaction.reply({ content: "You're already verified!", ephemeral: true });
+      await member.roles.add(role, "Member completed verification");
+      return interaction.reply({ content: "You're verified! Welcome to Late Night Hang Out.", ephemeral: true });
+    } catch (error) {
+      console.error("Verification failed:", error);
+      const response = { content: "I couldn't verify you. Please contact a moderator.", ephemeral: true };
+      if (interaction.replied || interaction.deferred) await interaction.followUp(response).catch(() => {});
+      else await interaction.reply(response).catch(() => {});
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
   try {
     await handleCommand(interaction);
