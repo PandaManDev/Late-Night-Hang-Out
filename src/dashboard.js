@@ -4,7 +4,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
 const GUILD_ID = process.env.GUILD_ID || "1566861965584764990";
-const PORT = Number(process.env.DASHBOARD_PORT || 16210);
+// Wispbyte may inject the assigned allocation as PORT/SERVER_PORT.
+// Prefer the hosting allocation, then the explicit dashboard setting, then the project default.
+const PORT = Number(process.env.PORT || process.env.SERVER_PORT || process.env.DASHBOARD_PORT || 16210);
 
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -179,5 +181,10 @@ $('logout').onclick=async()=>{await api('/auth/logout',{method:'POST'});location
 </script></body></html>`);
   });
 
-  app.listen(PORT, "0.0.0.0", () => console.log(`Admin dashboard listening on port ${PORT}`));
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Admin dashboard listening on 0.0.0.0:${PORT}`);
+  });
+  server.on("error", error => {
+    console.error(`Admin dashboard failed to listen on 0.0.0.0:${PORT}:`, error);
+  });
 }
