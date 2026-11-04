@@ -122,6 +122,46 @@ export const commands = [
     .setDescription("Post the Late Night Hang Out server rules." )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   new SlashCommandBuilder()
+    .setName("warn")
+    .setDescription("Warn a member and notify them by DM.")
+    .addUserOption(option => option.setName("user").setDescription("Member to warn").setRequired(true))
+    .addStringOption(option => option.setName("reason").setDescription("Reason for the warning").setMaxLength(500).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("unban")
+    .setDescription("Unban a user by their Discord ID.")
+    .addStringOption(option => option.setName("userid").setDescription("User ID to unban").setRequired(true))
+    .addStringOption(option => option.setName("reason").setDescription("Reason for the unban").setMaxLength(500)),
+  new SlashCommandBuilder()
+    .setName("say")
+    .setDescription("Make the bot send a message in a channel.")
+    .addChannelOption(option => option.setName("channel").setDescription("Text channel").addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setRequired(true))
+    .addStringOption(option => option.setName("message").setDescription("Message to send").setMaxLength(2000).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("joke")
+    .setDescription("Get a random clean joke."),
+  new SlashCommandBuilder()
+    .setName("rps")
+    .setDescription("Play rock, paper, scissors.")
+    .addStringOption(option => option.setName("choice").setDescription("Your choice").setRequired(true)
+      .addChoices({ name: "Rock", value: "rock" }, { name: "Paper", value: "paper" }, { name: "Scissors", value: "scissors" })),
+  new SlashCommandBuilder()
+    .setName("hug")
+    .setDescription("Send someone a friendly hug.")
+    .addUserOption(option => option.setName("user").setDescription("Who gets the hug?").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("compliment")
+    .setDescription("Send someone a wholesome compliment.")
+    .addUserOption(option => option.setName("user").setDescription("Who gets the compliment?").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("rate")
+    .setDescription("Get a totally scientific 1–10 rating.")
+    .addStringOption(option => option.setName("thing").setDescription("What should be rated?").setMaxLength(100).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("truthordare")
+    .setDescription("Get a safe truth question or silly dare.")
+    .addStringOption(option => option.setName("type").setDescription("Truth or dare").setRequired(true)
+      .addChoices({ name: "Truth", value: "truth" }, { name: "Dare", value: "dare" })),
+  new SlashCommandBuilder()
     .setName("poll")
     .setDescription("Create a two-option poll.")
     .addStringOption(option => option.setName("question").setDescription("Poll question").setMaxLength(200).setRequired(true))
@@ -159,7 +199,7 @@ export async function handleCommand(interaction) {
   const adminOnlyCommands = new Set([
     "clear", "kick", "ban", "timeout", "untimeout",
     "announce", "setwelcome", "setlogchannel", "slowmode",
-    "lock", "unlock", "nickname", "role", "poll", "postrules"
+    "lock", "unlock", "nickname", "role", "poll", "postrules", "warn", "unban", "say"
   ]);
 
   if (adminOnlyCommands.has(commandName)) {
@@ -207,6 +247,17 @@ export async function handleCommand(interaction) {
       "`/roll [sides]` — Roll dice",
       "`/choose option1 option2` — Pick an option",
       "`/poll question option1 option2` — Create a poll",
+      "`/joke` — Get a clean joke",
+      "`/rps choice` — Play rock, paper, scissors",
+      "`/hug user` — Send a friendly hug",
+      "`/compliment user` — Send a compliment",
+      "`/rate thing` — Rate something out of 10",
+      "`/truthordare type` — Get a truth or dare",
+      "",
+      "**Additional Admin Tools**",
+      "`/warn user reason` — Warn a member and DM them",
+      "`/unban userid [reason]` — Unban by user ID",
+      "`/say channel message` — Send a bot message",
       "",
       "**Channel & Role Tools**",
       "`/slowmode seconds` — Set slowmode",
@@ -303,6 +354,86 @@ export async function handleCommand(interaction) {
     const message = interaction.options.getString("message", true);
     await channel.send({ content: message, allowedMentions: { parse: [] } });
     return interaction.reply({ content: `Announcement posted in <#${channel.id}>.`, ephemeral: true });
+  }
+
+  if (commandName === "warn") {
+    const user = interaction.options.getUser("user", true);
+    const reason = interaction.options.getString("reason", true);
+    if (user.id === interaction.user.id || user.id === interaction.client.user.id) {
+      return interaction.reply({ content: "You cannot warn yourself or the bot.", ephemeral: true });
+    }
+    const target = await guild.members.fetch(user.id).catch(() => null);
+    if (!target) return interaction.reply({ content: "That member is not in this server.", ephemeral: true });
+    if (target.id === guild.ownerId || (!member.permissions.has(PermissionFlagsBits.Administrator) && member.roles.highest.comparePositionTo(target.roles.highest) <= 0)) {
+      return interaction.reply({ content: "You cannot warn a member with an equal or higher role.", ephemeral: true });
+    }
+    await user.send({ embeds: [makeEmbed(`Warning in ${guild.name}`, `You have received a warning.\n**Reason:** ${reason}`, 0xffc04d)] }).catch(() => {});
+    await sendLog(guild, `**Warning:** ${user.tag}\n**Moderator:** ${interaction.user.tag}\n**Reason:** ${reason}`);
+    return interaction.reply({ content: `Warned **${user.tag}**. Their DMs may be closed, but the warning was logged.`, ephemeral: true });
+  }
+
+  if (commandName === "unban") {
+    const userId = interaction.options.getString("userid", true).trim();
+    const reason = interaction.options.getString("reason") || `Unban by ${interaction.user.tag}`;
+    if (!/^\\d{17,20}$/.test(userId)) return interaction.reply({ content: "Enter a valid Discord user ID.", ephemeral: true });
+    const ban = await guild.bans.fetch(userId).catch(() => null);
+    if (!ban) return interaction.reply({ content: "That user is not currently banned (or I cannot view the ban list).", ephemeral: true });
+    await guild.members.unban(userId, reason);
+    await sendLog(guild, `**Unban:** ${ban.user.tag} (${userId})\n**Moderator:** ${interaction.user.tag}\n**Reason:** ${reason}`);
+    return interaction.reply({ content: `Unbanned **${ban.user.tag}**.`, ephemeral: true });
+  }
+
+  if (commandName === "say") {
+    const channel = interaction.options.getChannel("channel", true);
+    const message = interaction.options.getString("message", true);
+    if (!channel.isTextBased() || !channel.guild || channel.guild.id !== guild.id) {
+      return interaction.reply({ content: "Choose a text channel in this server.", ephemeral: true });
+    }
+    await channel.send({ content: message, allowedMentions: { parse: [] } });
+    return interaction.reply({ content: `Message sent in <#${channel.id}>.`, ephemeral: true });
+  }
+
+  if (commandName === "joke") {
+    const jokes = [
+      "Why did the scarecrow win an award? Because he was outstanding in his field.",
+      "I told my computer I needed a break. It said, 'No problem — I'll go to sleep.'",
+      "Why do programmers prefer dark mode? Because light attracts bugs.",
+      "What do you call a fake noodle? An impasta.",
+      "Why was the math book sad? It had too many problems."
+    ];
+    return interaction.reply({ embeds: [makeEmbed("Random Joke", jokes[Math.floor(Math.random() * jokes.length)])] });
+  }
+
+  if (commandName === "rps") {
+    const choices = ["rock", "paper", "scissors"];
+    const player = interaction.options.getString("choice", true);
+    const bot = choices[Math.floor(Math.random() * choices.length)];
+    const result = player === bot ? "It's a tie!" :
+      (player === "rock" && bot === "scissors") || (player === "paper" && bot === "rock") || (player === "scissors" && bot === "paper") ? "You win!" : "I win!";
+    return interaction.reply({ embeds: [makeEmbed("Rock Paper Scissors", `You chose **${player}**. I chose **${bot}**.\n\n**${result}**`)] });
+  }
+
+  if (commandName === "hug" || commandName === "compliment") {
+    const user = interaction.options.getUser("user", true);
+    if (commandName === "hug") {
+      return interaction.reply({ content: ` ${interaction.user} sends a big friendly hug to ${user}! ` });
+    }
+    const compliments = ["You make this community brighter.", "Your energy is genuinely appreciated.", "You are awesome just the way you are.", "You bring good vibes wherever you go.", "You're someone people are lucky to know."];
+    return interaction.reply({ content: `${user}, ${compliments[Math.floor(Math.random() * compliments.length)]}` });
+  }
+
+  if (commandName === "rate") {
+    const thing = interaction.options.getString("thing", true);
+    const score = Math.floor(Math.random() * 11);
+    return interaction.reply({ embeds: [makeEmbed("Totally Scientific Rating", `I'd rate **${thing}** a **${score}/10**. The science is questionable; the confidence is not.`)] });
+  }
+
+  if (commandName === "truthordare") {
+    const type = interaction.options.getString("type", true);
+    const truths = ["What's one small thing that always makes your day better?", "What's a skill you'd love to learn?", "What's the funniest thing that happened to you recently?", "If you could visit anywhere, where would you go?"];
+    const dares = ["Send a message using only three emojis.", "Give someone in the server a genuine compliment.", "Share your best terrible pun.", "Talk like a pirate for your next three messages."];
+    const pool = type === "truth" ? truths : dares;
+    return interaction.reply({ embeds: [makeEmbed(type === "truth" ? "Truth" : "Dare", pool[Math.floor(Math.random() * pool.length)])] });
   }
 
   if (commandName === "avatar") {
