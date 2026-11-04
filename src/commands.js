@@ -2,11 +2,18 @@ import {
   SlashCommandBuilder,
   PermissionFlagsBits,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType
 } from "discord.js";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
+const VERIFY_CHANNEL_ID = "1567403346153840711";
+const VERIFIED_ROLE_ID = "1566892030276411482";
+
 const commands = [
+  new SlashCommandBuilder().setName("setupverify").setDescription("Post the member verification panel."),
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Check whether the bot is online."),
@@ -218,7 +225,7 @@ export async function handleCommand(interaction) {
   const adminOnlyCommands = new Set([
     "clear", "kick", "ban", "timeout", "untimeout",
     "announce", "setwelcome", "setlogchannel", "slowmode",
-    "lock", "unlock", "nickname", "role", "poll", "postrules", "warn", "unban", "say"
+    "lock", "unlock", "nickname", "role", "poll", "postrules", "warn", "unban", "say", "setupverify"
   ]);
 
   if (adminOnlyCommands.has(commandName)) {
@@ -232,6 +239,26 @@ export async function handleCommand(interaction) {
   }
   if (!guild) {
     return interaction.reply({ content: "This command can only be used inside a server.", ephemeral: true });
+  }
+
+
+  if (commandName === "setupverify") {
+    const channel = await guild.channels.fetch(VERIFY_CHANNEL_ID).catch(() => null);
+    const role = await guild.roles.fetch(VERIFIED_ROLE_ID).catch(() => null);
+    if (!channel?.isTextBased()) return interaction.reply({ content: "I couldn't find the verification channel.", ephemeral: true });
+    if (!role || role.managed || role.position >= guild.members.me.roles.highest.position) {
+      return interaction.reply({ content: "I can't manage the Verified role. Move my bot role above it in Server Settings → Roles.", ephemeral: true });
+    }
+    const panel = new EmbedBuilder()
+      .setColor(0x8b7cff)
+      .setTitle("Welcome to Late Night Hang Out!")
+      .setDescription("Click Verify below to receive the Verified role and unlock the server. Please read the server rules first.")
+      .setFooter({ text: "Late Night Hang Out • Member Verification" });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("lnho_verify_member").setLabel("Verify").setStyle(ButtonStyle.Success)
+    );
+    await channel.send({ embeds: [panel], components: [row] });
+    return interaction.reply({ content: "Verification panel posted in <#" + VERIFY_CHANNEL_ID + ">.", ephemeral: true });
   }
 
   if (commandName === "ping") {
