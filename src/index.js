@@ -166,8 +166,19 @@ client.on("voiceStateUpdate", (oldState, newState) => {
   if (!oldState.channelId && newState.channelId) action = `Joined voice channel <#${newState.channelId}>`;
   else if (oldState.channelId && !newState.channelId) action = `Left voice channel <#${oldState.channelId}>`;
   else if (oldState.channelId !== newState.channelId) action = `Moved voice channel: <#${oldState.channelId}> → <#${newState.channelId}>`;
-  else action = "Voice settings changed (mute/deafen/video/stream)";
-  void sendLog(guild, `**${action}:** ${member.user.tag} (${member.id})`);
+  else {
+    const changes = [];
+    if (oldState.serverMute !== newState.serverMute) changes.push(`Server mute: ${newState.serverMute ? "Enabled" : "Disabled"}`);
+    if (oldState.serverDeaf !== newState.serverDeaf) changes.push(`Server deafen: ${newState.serverDeaf ? "Enabled" : "Disabled"}`);
+    if (oldState.selfMute !== newState.selfMute) changes.push(`Self mute: ${newState.selfMute ? "Enabled" : "Disabled"}`);
+    if (oldState.selfDeaf !== newState.selfDeaf) changes.push(`Self deafen: ${newState.selfDeaf ? "Enabled" : "Disabled"}`);
+    if (oldState.selfVideo !== newState.selfVideo) changes.push(`Camera: ${newState.selfVideo ? "On" : "Off"}`);
+    if (oldState.streaming !== newState.streaming) changes.push(`Screen share: ${newState.streaming ? "Started" : "Stopped"}`);
+    action = "Voice settings updated";
+    void sendLog(guild, `**${action}**\\n**Member:** ${member.user.tag} (<@${member.id}>)\\n${changes.map(change => `• ${change}`).join("\\n")}`);
+    return;
+  }
+  void sendLog(guild, `**${action}**\\n**Member:** ${member.user.tag} (<@${member.id}>)`);
 });
 
 client.on("guildBanAdd", ban => void sendLog(ban.guild, `**Member banned:** ${ban.user.tag} (${ban.user.id})`));
