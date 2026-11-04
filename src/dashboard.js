@@ -1,14 +1,8 @@
 import express from "express";
 import session from "express-session";
-import { PermissionFlagsBits } from "discord.js";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { getGuildSettings, updateGuildSettings } from "./storage.js";
 
-const ADMIN_ROLE_IDS = new Set([
-  "1566890802943103107",
-  "1566891359908929637",
-  "1566891462984073276",
-  "1566891555300704256"
-]);
 const GUILD_ID = process.env.GUILD_ID || "1566861965584764990";
 const PORT = Number(process.env.DASHBOARD_PORT || 16210);
 
@@ -19,7 +13,7 @@ function escapeHtml(value = "") {
 }
 
 export function startDashboard(client) {
-  const required = ["DISCORD_CLIENT_SECRET", "DASHBOARD_SESSION_SECRET"];
+  const required = ["DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"];
   const missing = required.filter(key => !process.env[key]);
   if (missing.length) {
     console.error("Dashboard disabled. Missing environment variables:", missing.join(", "));
@@ -37,70 +31,48 @@ export function startDashboard(client) {
   }));
 
   async function requireAdmin(req, res, next) {
+    if (!req.session.dashboardAuthenticated) return res.status(401).json({ error: "Enter the dashboard password to sign in." });
     try {
-      if (!req.session.discordUser?.id) return res.status(401).json({ error: "Please sign in with Discord." });
-      const guild = await client.guilds.fetch(GUILD_ID);
-      const member = await guild.members.fetch(req.session.discordUser.id).catch(() => null);
-      if (!member || !member.roles.cache.some(role => ADMIN_ROLE_IDS.has(role.id))) {
-        req.session.destroy(() => {});
-        return res.status(403).json({ error: "You do not have an approved admin role." });
-      }
-      req.adminMember = member;
-      req.guild = guild;
+      req.guild = await client.guilds.fetch(GUILD_ID);
+      req.adminMember = null;
       next();
     } catch (error) {
-      console.error("Dashboard authorization failed:", error);
-      res.status(503).json({ error: "Could not verify server membership. Try again shortly." });
+      console.error("Dashboard guild lookup failed:", error);
+      res.status(503).json({ error: "Could not load the Discord server. Try again shortly." });
     }
   }
 
-  app.get("/auth/login", (req, res) => {
-    const state = cryptoRandom();
-    req.session.oauthState = state;
-    const params = new URLSearchParams({
-      client_id: process.env.CLIENT_ID,
-      response_type: "code",
-      redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `https://latenightout.wispbyte.org:${PORT}/auth/callback`,
-      scope: "identify",
-      state
+  const loginAttempts = new Map();
+  app.post("/auth/login", (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const attempt = loginAttempts.get(ip);
+    if (attempt && attempt.blockedUntil > now) return res.status(429).json({ error: "Too many attempts. Wait five minutes and try again." });
+    const supplied = String(req.body?.password || "");
+    const expected = String(process.env.DASHBOARD_PASSWORD || "");
+    const suppliedHash = createHash("sha256").update(supplied).digest();
+    const expectedHash = createHash("sha256").update(expected).digest();
+    const valid = supplied.length > 0 && timingSafeEqual(suppliedHash, expectedHash);
+    if (!valid) {
+      const failures = (attempt?.failures || 0) + 1;
+      loginAttempts.set(ip, { failures, blockedUntil: failures >= 5 ? now + 300000 : 0 });
+      return res.status(401).json({ error: "Incorrect dashboard password." });
+    }
+    loginAttempts.delete(ip);
+    req.session.regenerate(error => {
+      if (error) return res.status(500).json({ error: "Could not start a secure session." });
+      req.session.dashboardAuthenticated = true;
+      req.session.save(saveError => {
+        if (saveError) return res.status(500).json({ error: "Could not save your login. Try again." });
+        res.json({ ok: true });
+      });
     });
-    res.redirect(`https://discord.com/oauth2/authorize?${params}`);
   });
 
-  app.get("/auth/callback", async (req, res) => {
-    try {
-      if (!req.query.code || !req.query.state || req.query.state !== req.session.oauthState) {
-        return res.status(400).send("Invalid login state. Please go back and sign in again.");
-      }
-      delete req.session.oauthState;
-      const body = new URLSearchParams({
-        client_id: process.env.CLIENT_ID,
-        client_secret: process.env.DISCORD_CLIENT_SECRET,
-        grant_type: "authorization_code",
-        code: String(req.query.code),
-        redirect_uri: process.env.DASHBOARD_REDIRECT_URI || `https://latenightout.wispbyte.org:${PORT}/auth/callback`
-      });
-      const tokenResponse = await fetch("https://discord.com/api/v10/oauth2/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      });
-      if (!tokenResponse.ok) throw new Error("Discord token exchange failed");
-      const token = await tokenResponse.json();
-      const userResponse = await fetch("https://discord.com/api/v10/users/@me", {
-        headers: { Authorization: `Bearer ${token.access_token}` }
-      });
-      if (!userResponse.ok) throw new Error("Could not read Discord profile");
-      req.session.discordUser = await userResponse.json();
-      res.redirect("/");
-    } catch (error) {
-      console.error("Dashboard login failed:", error);
-      res.status(401).send("Discord login failed. Check the OAuth settings and try again.");
-    }
-  });
+  app.get("/auth/login", (req, res) => res.redirect("/"));
 
   app.get("/api/me", requireAdmin, (req, res) => {
-    res.json({ user: { id: req.adminMember.id, tag: req.adminMember.user.tag, avatar: req.adminMember.user.displayAvatarURL() }, guild: req.guild.name });
+    res.json({ user: { tag: "Dashboard administrator" }, guild: req.guild.name });
   });
 
   app.get("/api/overview", requireAdmin, async (req, res) => {
@@ -136,7 +108,7 @@ export function startDashboard(client) {
     const target = await req.guild.members.fetch(userId).catch(() => null);
     if (!target) return res.status(404).json({ error: "Member not found." });
     if (target.id === req.guild.ownerId || target.id === client.user.id || !target.manageable) return res.status(403).json({ error: "That member cannot be moderated by the bot." });
-    const why = String(reason || `Dashboard action by ${req.adminMember.user.tag}`).slice(0, 500);
+    const why = String(reason || "Dashboard administrator action").slice(0, 500);
     if (action === "kick") await target.kick(why);
     else if (action === "ban") await req.guild.members.ban(target.id, { reason: why });
     else if (action === "timeout") {
@@ -174,7 +146,7 @@ export function startDashboard(client) {
     res.json({ ok: true });
   });
 
-  app.post("/auth/logout", (req, res) => req.session.destroy(() => res.json({ ok: true })));
+  app.post("/auth/logout", (req, res) => req.session.destroy(() => { res.clearCookie("lnho.admin"); res.json({ ok: true }); }));
 
   app.get("/", (req, res) => {
     res.type("html").send(`<!doctype html>
@@ -182,7 +154,7 @@ export function startDashboard(client) {
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--accent:#8b7cff;--text:#f3f5ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#25204a,var(--bg) 45%);color:var(--text);font:15px system-ui, sans-serif}header{padding:26px max(22px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}main{max-width:1100px;margin:32px auto;padding:0 20px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}.stat strong{display:block;font-size:28px;margin-top:8px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{background:#302b58;color:white;border:1px solid #514a83;border-radius:9px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.2)}input,select,textarea{width:100%;margin:7px 0 14px;padding:11px;border-radius:8px;border:1px solid var(--line);background:#0c1427;color:white}textarea{min-height:110px}label{display:block;color:var(--muted)}.hidden{display:none}.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.member img{width:34px;height:34px;border-radius:50%}.status{color:#8ee5b1}#notice{margin:14px 0;color:#ffcf8a}
 </style></head><body><header><div><b>🌙 Late Night Hang Out</b><div class="muted">Bot administration</div></div><div id="identity" class="muted"></div></header>
-<main><section id="login" class="panel"><h1>Admin dashboard</h1><p class="muted">Sign in with Discord. Only members with one of the server's approved admin roles can enter.</p><a href="/auth/login"><button>Sign in with Discord</button></a></section>
+<main><section id="login" class="panel"><h1>Admin dashboard</h1><p class="muted">Enter the private dashboard password to continue.</p><form id="loginForm"><label>Dashboard password<input id="dashboardPassword" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button></form><p id="loginError" class="muted" role="alert"></p></section>
 <section id="app" class="hidden"><h1>Dashboard overview</h1><div id="notice"></div><div class="grid" id="stats"></div>
 <nav class="tabs"><button data-tab="members">Members</button><button data-tab="moderation">Moderation</button><button data-tab="settings">Settings</button><button data-tab="announce">Announcement</button><button id="logout">Log out</button></nav>
 <section id="members" class="panel hidden"><h2>Members</h2><input id="memberSearch" placeholder="Search members"><div id="memberList">Loading…</div></section>
@@ -202,15 +174,10 @@ $('memberSearch').oninput=renderMembers;
 $('moderate').onclick=async()=>{try{const d=await api('/api/moderate',{method:'POST',body:JSON.stringify({userId:$('targetId').value,action:$('action').value,minutes:$('minutes').value,reason:$('reason').value})});notice(d.message)}catch(e){notice(e.message)}};
 $('saveSettings').onclick=async()=>{try{await api('/api/settings',{method:'POST',body:JSON.stringify({welcomeChannelId:$('welcome').value,logChannelId:$('logs').value})});notice('Settings saved.')}catch(e){notice(e.message)}};
 $('sendAnnouncement').onclick=async()=>{try{await api('/api/announce',{method:'POST',body:JSON.stringify({channelId:$('announceChannel').value,message:$('announceMessage').value})});notice('Announcement sent.')}catch(e){notice(e.message)}};
+$('loginForm').onsubmit=async event=>{event.preventDefault();$('loginError').textContent='';try{await api('/auth/login',{method:'POST',body:JSON.stringify({password:$('dashboardPassword').value})});$('dashboardPassword').value='';await init()}catch(e){$('loginError').textContent=e.message}};
 $('logout').onclick=async()=>{await api('/auth/logout',{method:'POST'});location.reload()};init();
 </script></body></html>`);
   });
-
-  const cryptoRandom = () => {
-    const bytes = new Uint8Array(24);
-    globalThis.crypto.getRandomValues(bytes);
-    return [...bytes].map(byte => byte.toString(16).padStart(2, "0")).join("");
-  };
 
   app.listen(PORT, "0.0.0.0", () => console.log(`Admin dashboard listening on port ${PORT}`));
 }
