@@ -27,8 +27,8 @@ export function startDashboard(client) {
 
   const app = express();
   app.set("trust proxy", 1);
-  app.get("/favicon.svg", (req, res) => {
-    res.type("image/svg+xml").send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#151d32"/><path d="M43 12a23 23 0 1 0 9 39A25 25 0 0 1 43 12Z" fill="#d9d2ff"/><circle cx="45" cy="18" r="3" fill="#8b7cff"/><circle cx="53" cy="29" r="2" fill="#8b7cff"/></svg>`);
+  app.get("/favicon.webp", (req, res) => {
+    res.type("image/webp").sendFile("favicon.webp", { root: new URL("../public/", import.meta.url).pathname });
   });
   app.use(express.json({ limit: "32kb" }));
   app.use(session({
@@ -163,7 +163,7 @@ export function startDashboard(client) {
   app.get("/", (req, res) => {
     res.type("html").send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Late Night Hang Out | Admin</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/webp" href="/favicon.webp">
 <meta name="theme-color" content="#0b1020">
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--accent:#8b7cff;--text:#f3f5ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#25204a,var(--bg) 45%);color:var(--text);font:15px system-ui, sans-serif}header{padding:26px max(22px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}main{max-width:1100px;margin:32px auto;padding:0 20px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}.stat strong{display:block;font-size:28px;margin-top:8px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{background:#302b58;color:white;border:1px solid #514a83;border-radius:9px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.2)}input,select,textarea{width:100%;margin:7px 0 14px;padding:11px;border-radius:8px;border:1px solid var(--line);background:#0c1427;color:white}textarea{min-height:110px}label{display:block;color:var(--muted)}.hidden{display:none}.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.member img{width:34px;height:34px;border-radius:50%}.status{color:#8ee5b1}#notice{margin:14px 0;color:#ffcf8a}.header-actions{display:flex;align-items:center;gap:16px}.discord-link{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;background:#5865f2;border-radius:9px;padding:9px 13px;font-weight:600}.discord-link svg{width:20px;height:20px}.discord-link:hover{filter:brightness(1.12)}
