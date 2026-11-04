@@ -23,13 +23,14 @@ export function startDashboard(client) {
   }
 
   const app = express();
+  app.set("trust proxy", 1);
   app.use(express.json({ limit: "32kb" }));
   app.use(session({
     name: "lnho.admin",
     secret: process.env.DASHBOARD_SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax", secure: process.env.DASHBOARD_HTTPS === "true", maxAge: 8 * 60 * 60 * 1000 }
+    cookie: { httpOnly: true, sameSite: "lax", secure: "auto", maxAge: 8 * 60 * 60 * 1000 }
   }));
 
   async function requireAdmin(req, res, next) {
@@ -166,10 +167,11 @@ export function startDashboard(client) {
 </section></main>
 <script>
 const $=id=>document.getElementById(id);let members=[];
-async function api(path,options={}){const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data}
+async function api(path,options={}){let r;try{r=await fetch(path,{...options,credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})}})}catch(e){throw Error('Could not contact the dashboard server. Refresh the page and check the Wispbyte console.')};const raw=await r.text();let data={};try{data=raw?JSON.parse(raw):{}}catch{data={}}if(!r.ok)throw Error(data.error||('Dashboard request failed (HTTP '+r.status+'). Check the Wispbyte console.'));return data}
 function notice(s){$('notice').textContent=s}
+function showLogin(message=''){ $('login').classList.remove('hidden');$('app').classList.add('hidden');$('identity').textContent='';$('loginError').textContent=message; }
 function fillSelect(el,channels,selected){el.innerHTML='<option value="">Not configured</option>'+channels.map(c=>'<option value="'+c.id+'">#'+c.name.replace(/[&<>"]/g,'')+'</option>').join('');el.value=selected||''}
-async function init(){try{const [me,overview,channels]=await Promise.all([api('/api/me'),api('/api/overview'),api('/api/channels')]);$('login').classList.add('hidden');$('app').classList.remove('hidden');$('identity').textContent=me.user.tag+' · '+me.guild;$('stats').innerHTML=[['Members',overview.memberCount],['Channels',overview.channelCount],['Roles',overview.roleCount],['Bot ping',overview.botPing+' ms']].map(x=>'<div class="stat"><span class="muted">'+x[0]+'</span><strong>'+x[1]+'</strong></div>').join('');for(const id of ['welcome','logs','announceChannel'])fillSelect($(id),channels,id==='welcome'?overview.settings.welcomeChannelId:id==='logs'?overview.settings.logChannelId:null);members=await api('/api/members');renderMembers();}catch(e){$('login').classList.remove('hidden');$('app').classList.add('hidden');$('identity').textContent='';$('login').insertAdjacentHTML('beforeend','<p id="loginError" class="muted">'+e.message+'</p>')}}
+async function init(){try{const me=await api('/api/me');const [overview,channels]=await Promise.all([api('/api/overview'),api('/api/channels')]);$('login').classList.add('hidden');$('app').classList.remove('hidden');$('identity').textContent=me.user.tag+' · '+me.guild;$('stats').innerHTML=[['Members',overview.memberCount],['Channels',overview.channelCount],['Roles',overview.roleCount],['Bot ping',overview.botPing+' ms']].map(x=>'<div class="stat"><span class="muted">'+x[0]+'</span><strong>'+x[1]+'</strong></div>').join('');for(const id of ['welcome','logs','announceChannel'])fillSelect($(id),channels,id==='welcome'?overview.settings.welcomeChannelId:id==='logs'?overview.settings.logChannelId:null);members=await api('/api/members');renderMembers();}catch(e){if(String(e.message).includes('HTTP 401'))showLogin('Enter the dashboard password to sign in.');else showLogin(e.message);}}
 function renderMembers(){const q=$('memberSearch').value.toLowerCase();$('memberList').innerHTML=members.filter(m=>(m.tag+' '+m.nickname+' '+m.id).toLowerCase().includes(q)).map(m=>'<div class="member"><img src="'+m.avatar+'"><div><b>'+m.nickname.replace(/[&<>"]/g,'')+'</b><div class="muted">'+m.tag+' · '+m.id+'</div></div></div>').join('')||'No members found.'}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{['members','moderation','settings','announce'].forEach(id=>$(id).classList.add('hidden'));$(b.dataset.tab).classList.remove('hidden')});
 $('memberSearch').oninput=renderMembers;
