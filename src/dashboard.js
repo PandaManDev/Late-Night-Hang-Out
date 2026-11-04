@@ -27,6 +27,9 @@ export function startDashboard(client) {
 
   const app = express();
   app.set("trust proxy", 1);
+  app.get("/favicon.svg", (req, res) => {
+    res.type("image/svg+xml").send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#151d32"/><path d="M43 12a23 23 0 1 0 9 39A25 25 0 0 1 43 12Z" fill="#d9d2ff"/><circle cx="45" cy="18" r="3" fill="#8b7cff"/><circle cx="53" cy="29" r="2" fill="#8b7cff"/></svg>`);
+  });
   app.use(express.json({ limit: "32kb" }));
   app.use(session({
     name: "lnho.admin",
@@ -160,13 +163,15 @@ export function startDashboard(client) {
   app.get("/", (req, res) => {
     res.type("html").send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Late Night Hang Out | Admin</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#0b1020">
 <style>
-:root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--accent:#8b7cff;--text:#f3f5ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#25204a,var(--bg) 45%);color:var(--text);font:15px system-ui, sans-serif}header{padding:26px max(22px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}main{max-width:1100px;margin:32px auto;padding:0 20px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}.stat strong{display:block;font-size:28px;margin-top:8px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{background:#302b58;color:white;border:1px solid #514a83;border-radius:9px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.2)}input,select,textarea{width:100%;margin:7px 0 14px;padding:11px;border-radius:8px;border:1px solid var(--line);background:#0c1427;color:white}textarea{min-height:110px}label{display:block;color:var(--muted)}.hidden{display:none}.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.member img{width:34px;height:34px;border-radius:50%}.status{color:#8ee5b1}#notice{margin:14px 0;color:#ffcf8a}
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--accent:#8b7cff;--text:#f3f5ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#25204a,var(--bg) 45%);color:var(--text);font:15px system-ui, sans-serif}header{padding:26px max(22px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}main{max-width:1100px;margin:32px auto;padding:0 20px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}.stat strong{display:block;font-size:28px;margin-top:8px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{background:#302b58;color:white;border:1px solid #514a83;border-radius:9px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.2)}input,select,textarea{width:100%;margin:7px 0 14px;padding:11px;border-radius:8px;border:1px solid var(--line);background:#0c1427;color:white}textarea{min-height:110px}label{display:block;color:var(--muted)}.hidden{display:none}.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.member img{width:34px;height:34px;border-radius:50%}.status{color:#8ee5b1}#notice{margin:14px 0;color:#ffcf8a}.header-actions{display:flex;align-items:center;gap:16px}.discord-link{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;background:#5865f2;border-radius:9px;padding:9px 13px;font-weight:600}.discord-link svg{width:20px;height:20px}.discord-link:hover{filter:brightness(1.12)}
 
 /* Responsive layout: phones and small tablets */
 @media (max-width: 700px){
   body{font-size:14px}
-  header{padding:16px;gap:10px;align-items:flex-start;flex-direction:column}
+  header{padding:16px;gap:10px;align-items:flex-start;flex-direction:column}.header-actions{width:100%;justify-content:space-between;flex-wrap:wrap}
   main{margin:18px auto;padding:0 12px}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
   .panel,.stat{padding:14px;border-radius:12px;margin-bottom:12px}
@@ -188,7 +193,7 @@ export function startDashboard(client) {
   main{padding:0 10px}
   .tabs{grid-template-columns:1fr 1fr}
 }
-</style></head><body><header><div><b>🌙 Late Night Hang Out</b><div class="muted">Bot administration</div></div><div id="identity" class="muted"></div></header>
+</style></head><body><header><div><b>🌙 Late Night Hang Out</b><div class="muted">Bot administration</div></div><div class="header-actions"><a class="discord-link" href="https://discord.gg/WPshNz87pZ" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord server" title="Join our Discord server"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.7 5.3A18.6 18.6 0 0 0 15.1 4l-.6 1.2a17 17 0 0 0-5 0L8.9 4a18.6 18.6 0 0 0-4.6 1.3C1.4 9.6.6 13.8 1 18a18.8 18.8 0 0 0 5.7 2.9l1.2-2a12 12 0 0 1-1.9-.9l.5-.4a13.4 13.4 0 0 0 11 0l.5.4a12 12 0 0 1-1.9.9l1.2 2A18.8 18.8 0 0 0 23 18c.5-4.9-.8-9-3.3-12.7ZM8.5 15.3c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg><span>Join Discord</span></a><div id="identity" class="muted"></div></div></header>
 <main><section id="login" class="panel"><h1>Admin dashboard</h1><p class="muted">Enter the private dashboard password to continue.</p><form id="loginForm"><label>Dashboard password<input id="dashboardPassword" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button></form><p id="loginError" class="muted" role="alert"></p></section>
 <section id="app" class="hidden"><h1>Dashboard overview</h1><div id="notice"></div><div class="grid" id="stats"></div>
 <nav class="tabs"><button data-tab="members">Members</button><button data-tab="moderation">Moderation</button><button data-tab="settings">Settings</button><button data-tab="announce">Announcement</button><button id="logout">Log out</button></nav>
