@@ -23,6 +23,10 @@ A community bot built with **Node.js 24** and **discord.js v14**.
 4. Optionally set `GUILD_ID` for instant registration in one test server
 5. Start: `npm start`
 
+## Admin dashboard
+
+The dashboard uses a shared password instead of Discord OAuth. Set `DASHBOARD_PASSWORD` and `DASHBOARD_SESSION_SECRET` as private environment variables in your hosting panel. Use a long, unique password and keep it private. Anyone who knows this password can use the dashboard moderation and server-management tools. Set `DASHBOARD_HTTPS=true` only when the dashboard is actually served over HTTPS; otherwise leave it `false` so the login session cookie works over HTTP. Open `http://your-host:16210` (replace with your assigned dashboard address).
+
 ## Developer Portal
 Enable **Server Members Intent** for welcome/goodbye events.
 
