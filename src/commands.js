@@ -182,9 +182,28 @@ async function sendLog(guild, description) {
   const settings = getGuildSettings(guild.id);
   const logChannelId = settings.logChannelId || "1566892595546820709";
   const channel = await guild.channels.fetch(logChannelId).catch(() => null);
-  if (channel?.isTextBased()) {
-    await channel.send({ embeds: [makeEmbed("Server Log", description, 0x747f8d)] }).catch(() => {});
-  }
+  if (!channel?.isTextBased()) return;
+
+  const firstLine = String(description || "").split("\\n")[0];
+  const eventMatch = firstLine.match(/^\\*\\*(.+?)\\*\\*/);
+  const eventName = (eventMatch?.[1] || "Server activity").replace(/:$/, "");
+  const lower = eventName.toLowerCase();
+  let color = 0x5865f2;
+  if (/ban|kick|timeout|warn|delete|left|removed/.test(lower)) color = 0xed4245;
+  else if (/join|created|added|unban|welcome/.test(lower)) color = 0x57f287;
+  else if (/edit|updated|changed|voice|role/.test(lower)) color = 0xfee75c;
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: guild.name, iconURL: guild.iconURL({ size: 64 }) || undefined })
+    .setTitle(eventName.length > 240 ? eventName.slice(0, 237) + "..." : eventName)
+    .setDescription(String(description || "No additional details provided.").slice(0, 4000))
+    .setFooter({ text: "Late Night Hang Out • Server Audit Log" })
+    .setTimestamp();
+
+  await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(error => {
+    console.error("Could not send server log:", error);
+  });
 }
 
 export async function handleCommand(interaction) {
