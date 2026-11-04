@@ -6,7 +6,9 @@ import { getGuildSettings, updateGuildSettings } from "./storage.js";
 const GUILD_ID = process.env.GUILD_ID || "1566861965584764990";
 // Wispbyte may inject the assigned allocation as PORT/SERVER_PORT.
 // Prefer the hosting allocation, then the explicit dashboard setting, then the project default.
-const PORT = Number(process.env.PORT || process.env.SERVER_PORT || process.env.DASHBOARD_PORT || 16210);
+// Public Wispbyte dashboard address. Keep this in sync with the Wispbyte subdomain allocation.
+const DASHBOARD_PUBLIC_URL = "http://latenightout.wispbyte.org:16210/";
+const PORT = Number(process.env.DASHBOARD_PORT || process.env.PORT || process.env.SERVER_PORT || 16210);
 
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -189,6 +191,7 @@ $('logout').onclick=async()=>{await api('/auth/logout',{method:'POST'});location
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Admin dashboard listening on 0.0.0.0:${PORT}`);
+    console.log(`Dashboard URL: ${DASHBOARD_PUBLIC_URL}`);
   });
   server.on("error", error => {
     console.error(`Admin dashboard failed to listen on 0.0.0.0:${PORT}:`, error);
