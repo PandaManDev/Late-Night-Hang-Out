@@ -63,29 +63,29 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
+// Dedicated channel for member join/leave announcements.
+const JOIN_LEAVE_CHANNEL_ID = "1567403087440773301";
+
 client.on("guildMemberAdd", async member => {
-  const settings = getGuildSettings(member.guild.id);
-  if (!settings.welcomeChannelId) return;
-  const channel = await member.guild.channels.fetch(settings.welcomeChannelId).catch(() => null);
-  if (channel?.isTextBased()) {
-    await channel.send({
-      embeds: [makeEmbed("Welcome to Late Night Hang Out!", `Welcome ${member} to **${member.guild.name}**! Make yourself at home and enjoy your stay.`)]
-    }).catch(console.error);
+  const channel = await member.guild.channels.fetch(JOIN_LEAVE_CHANNEL_ID).catch(() => null);
+  if (!channel?.isTextBased()) {
+    console.error(`Join/leave channel ${JOIN_LEAVE_CHANNEL_ID} is missing or is not a text channel.`);
+    return;
   }
-  await sendLog(member.guild, `**Member joined:** ${member.user.tag} (${member.id})`);
+  await channel.send({
+    embeds: [makeEmbed("Welcome to Late Night Hang Out!", `Welcome ${member} to **${member.guild.name}**! Make yourself at home and enjoy your stay.`)]
+  }).catch(error => console.error("Could not send member-join message:", error));
 });
 
 client.on("guildMemberRemove", async member => {
-  const settings = getGuildSettings(member.guild.id);
-  if (settings.welcomeChannelId) {
-    const channel = await member.guild.channels.fetch(settings.welcomeChannelId).catch(() => null);
-    if (channel?.isTextBased()) {
-      await channel.send({
-        embeds: [makeEmbed("Member left", `**${member.user.tag}** has left the server.`, 0xed4245)]
-      }).catch(console.error);
-    }
+  const channel = await member.guild.channels.fetch(JOIN_LEAVE_CHANNEL_ID).catch(() => null);
+  if (!channel?.isTextBased()) {
+    console.error(`Join/leave channel ${JOIN_LEAVE_CHANNEL_ID} is missing or is not a text channel.`);
+    return;
   }
-  await sendLog(member.guild, `**Member left:** ${member.user.tag} (${member.id})`);
+  await channel.send({
+    embeds: [makeEmbed("Member left", `**${member.user.tag}** has left the server.`, 0xed4245)]
+  }).catch(error => console.error("Could not send member-leave message:", error));
 });
 
 
