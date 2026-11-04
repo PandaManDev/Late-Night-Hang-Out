@@ -162,6 +162,32 @@ export function startDashboard(client) {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Late Night Hang Out | Admin</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1020;--panel:#151d32;--line:#293550;--muted:#9aa8c2;--accent:#8b7cff;--text:#f3f5ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#25204a,var(--bg) 45%);color:var(--text);font:15px system-ui, sans-serif}header{padding:26px max(22px,calc((100% - 1100px)/2));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}main{max-width:1100px;margin:32px auto;padding:0 20px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.panel,.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}.stat strong{display:block;font-size:28px;margin-top:8px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.tabs button,button{background:#302b58;color:white;border:1px solid #514a83;border-radius:9px;padding:10px 14px;cursor:pointer}button:hover{filter:brightness(1.2)}input,select,textarea{width:100%;margin:7px 0 14px;padding:11px;border-radius:8px;border:1px solid var(--line);background:#0c1427;color:white}textarea{min-height:110px}label{display:block;color:var(--muted)}.hidden{display:none}.member{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.member img{width:34px;height:34px;border-radius:50%}.status{color:#8ee5b1}#notice{margin:14px 0;color:#ffcf8a}
+
+/* Responsive layout: phones and small tablets */
+@media (max-width: 700px){
+  body{font-size:14px}
+  header{padding:16px;gap:10px;align-items:flex-start;flex-direction:column}
+  main{margin:18px auto;padding:0 12px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .panel,.stat{padding:14px;border-radius:12px;margin-bottom:12px}
+  .stat strong{font-size:23px}
+  .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
+  .tabs button{width:100%;min-height:44px;padding:10px 8px}
+  button{min-height:44px}
+  input,select,textarea{font-size:16px;padding:12px}
+  h1{font-size:1.55rem}
+  h2{font-size:1.2rem}
+  .member{align-items:flex-start;min-width:0}
+  .member>div{min-width:0;overflow-wrap:anywhere}
+  .member img{flex:0 0 34px}
+  #login{margin-top:12px}
+}
+@media (max-width: 380px){
+  .grid{grid-template-columns:1fr}
+  header{padding:14px 12px}
+  main{padding:0 10px}
+  .tabs{grid-template-columns:1fr 1fr}
+}
 </style></head><body><header><div><b>🌙 Late Night Hang Out</b><div class="muted">Bot administration</div></div><div id="identity" class="muted"></div></header>
 <main><section id="login" class="panel"><h1>Admin dashboard</h1><p class="muted">Enter the private dashboard password to continue.</p><form id="loginForm"><label>Dashboard password<input id="dashboardPassword" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button></form><p id="loginError" class="muted" role="alert"></p></section>
 <section id="app" class="hidden"><h1>Dashboard overview</h1><div id="notice"></div><div class="grid" id="stats"></div>
