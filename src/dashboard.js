@@ -18,7 +18,8 @@ export function startDashboard(client) {
   const required = ["DASHBOARD_PASSWORD", "DASHBOARD_SESSION_SECRET"];
   const missing = required.filter(key => !process.env[key]);
   if (missing.length) {
-    console.error("Dashboard disabled. Missing environment variables:", missing.join(", "));
+    console.error("Dashboard disabled. Missing required Wispbyte environment variables:", missing.join(", "));
+    console.error("Add both DASHBOARD_PASSWORD and DASHBOARD_SESSION_SECRET in the server Environment/Variables settings, save, then restart.");
     return;
   }
 
@@ -80,7 +81,8 @@ export function startDashboard(client) {
 
   app.get("/api/overview", requireAdmin, async (req, res) => {
     const guild = req.guild;
-    await guild.members.fetch().catch(() => {});
+    // Avoid bulk-fetching every guild member here: Discord can rate-limit
+    // Gateway opcode 8 requests. memberCount comes from the guild payload.
     res.json({
       name: guild.name,
       memberCount: guild.memberCount,
@@ -93,7 +95,9 @@ export function startDashboard(client) {
   });
 
   app.get("/api/members", requireAdmin, async (req, res) => {
-    const members = await req.guild.members.fetch();
+    // Use members already cached by discord.js instead of an unbounded
+    // Gateway member request every time the dashboard opens.
+    const members = req.guild.members.cache;
     res.json(members.filter(member => !member.user.bot).map(member => ({
       id: member.id, tag: member.user.tag, nickname: member.displayName,
       avatar: member.user.displayAvatarURL(), roles: member.roles.cache.filter(role => role.id !== req.guild.id).map(role => role.name)
